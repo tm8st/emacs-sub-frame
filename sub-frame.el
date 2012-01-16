@@ -23,6 +23,8 @@
 
 ;;; Code:
 
+(eval-when-compile (require 'cl))
+
 (defgroup sub-frame nil
   ""
   :group 'convenience
@@ -49,6 +51,13 @@
   :type 'integer
   :group 'sub-frame)
 
+(defcustom sf:frame-parameters '((name . "SUB-FRAME")
+                                 (alpha . 95)
+                                 (vertical-scroll-bars . right))
+  ""
+  :type 'alist
+  :group 'sub-frame)
+
 (defun sf:search-frame-by-name (name)
   "search frame by name."
   (let* ((frame-names-alist (make-frame-names-alist))
@@ -59,30 +68,26 @@
   "select sub frame."
   (select-frame frame)
   (make-frame-visible frame)
-  (raise-frame frame)
-  )
+  (raise-frame frame))
 
 (defun sf:get-sub-frame ()  
   "get log frame. if not exist, create it."
-  (let* ((frame (sf:search-frame-by-name "*sub-frame*"))
-         (frame (or frame (make-frame '((name . "*sub-frame*")
-                                        ;; (minibuffer . nil)
-                                        ;; (background-mode . t)
-                                        ;; (auto-raise . t)
-                                        ;; (auto-lower . nil)
-                                        )
-                                      ))))
+  (let* ((frame (sf:search-frame-by-name (cdr (assoc 'name sf:frame-parameters))))
+         (frame (or frame (make-frame sf:frame-parameters))))
     (set-frame-position frame sf:frame-left sf:frame-top)
     (set-frame-size frame sf:frame-width sf:frame-height)
     frame))
 
 (defmacro sf:sub-frame-op (&rest body)
-  `(let ((prev-frame
-          (window-frame (get-buffer-window))))
+  "for define sub-frame operations.
+   use gensym make this Warning: Function `gensym' from cl package called at runtime
+"
+  ;; (let ((prev-frame (gensym)))
+  `(let ((sf:prev-frame (window-frame (get-buffer-window))))
      (sf:select-sub-frame (sf:get-sub-frame))
      ,@body
      (delete-other-windows)
-     (sf:select-sub-frame prev-frame)))
+     (sf:select-sub-frame sf:prev-frame)))
 
 (defun sf:async-shell-command (&optional cmd &optional out-buffer &optional error-buffer)
   (interactive)
@@ -145,5 +150,14 @@
   (let ((subframe (sf:get-sub-frame)))
     (when subframe
       (delete-frame subframe))))
+
+(defun sf:toggle-hidden ()
+  (interactive)
+  "hidden/uhidden sub-frame."
+  (let ((subframe (sf:get-sub-frame)))
+    (when subframe
+      (if (frame-visible-p subframe)
+          (make-frame-invisible subframe)
+        (make-frame-visible subframe)))))
 
 (provide 'sub-frame)
